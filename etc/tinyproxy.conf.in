@@ -20,14 +20,14 @@ Group nobody
 # that should you choose to run on a port lower than 1024 you will need
 # to start tinyproxy using root.
 #
-Port 8888
+Port 32665
 
 #
 # Listen: If you have multiple interfaces this allows you to bind to
 # only one. If this is commented out, tinyproxy will bind to all
 # interfaces present.
 #
-#Listen 192.168.0.1
+Listen 127.0.0.1
 
 #
 # Bind: This allows you to specify which interface will be used for
@@ -180,7 +180,9 @@ LogLevel Info
 #  IP/bits  matches network/mask
 #  IP/mask  matches network/mask
 #
-#Upstream http some.remote.proxy:port
+upstream http 1.1.1.1:10000
+upstream http 2.2.2.2:20000
+upstream http 3.3.3.3:30000
 
 #
 # MaxClients: This is the absolute highest number of threads which will

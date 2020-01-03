@@ -23,14 +23,19 @@
 /*
  * Routines for handling the list of upstream proxies.
  */
+#include "main.h"
 
 #include "upstream.h"
 #include "heap.h"
 #include "log.h"
 #include "base64.h"
 #include "basicauth.h"
+#include "conf.h"
 
 #ifdef UPSTREAM_SUPPORT
+int req_counter = 0;
+int total_upstreams = 0;
+
 const char *
 proxy_type_name(proxy_type type)
 {
@@ -137,7 +142,7 @@ static struct upstream *upstream_build (const char *host, int port, const char *
                 log_message (LOG_INFO, "Added upstream %s %s:%d for %s",
                              proxy_type_name(type), host, port, domain);
         }
-
+        
         return up;
 
 fail:
@@ -168,15 +173,10 @@ void upstream_add (const char *host, int port, const char *domain,
                 struct upstream *tmp = *upstream_list;
 
                 while (tmp) {
-                        if (!tmp->domain && !tmp->ip) {
-                                log_message (LOG_WARNING,
-                                             "Duplicate default upstream");
-                                goto upstream_cleanup;
-                        }
-
                         if (!tmp->next) {
                                 up->next = NULL;
                                 tmp->next = up;
+                                total_upstreams++;
                                 return;
                         }
 
@@ -186,14 +186,9 @@ void upstream_add (const char *host, int port, const char *domain,
 
         up->next = *upstream_list;
         *upstream_list = up;
-
-        return;
-
-upstream_cleanup:
-        safefree (up->host);
-        safefree (up->domain);
-        safefree (up);
-
+        
+        total_upstreams++;
+                
         return;
 }
 
@@ -228,6 +223,16 @@ struct upstream *upstream_get (char *host, struct upstream *up)
                         if ((my_ip & up->mask) == up->ip)
                                 break;
                 } else {
+                        int upstream_no = req_counter % total_upstreams;
+                        int idx = 0;
+                        while (up && idx <= upstream_no) {
+                            idx++;
+                            up = up->next;
+                        }
+    
+                        if (!up)
+                            up = config.upstream_list;
+                        
                         break;  /* No domain or IP, default upstream */
                 }
 
@@ -243,6 +248,8 @@ struct upstream *upstream_get (char *host, struct upstream *up)
         else
                 log_message (LOG_INFO, "No upstream proxy for %s", host);
 
+        req_counter++;
+        
         return up;
 }
 
